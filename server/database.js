@@ -41,7 +41,7 @@ export const initDb = async () => {
 export const getOrCreateUser = async (id, phoneNumber = null, passcode = null) => {
   const supabase = getSupabase();
   
-  if (phoneNumber) {
+  if (phoneNumber && phoneNumber !== 'Anonymous Guest') {
     const { data: existingUser, error: findErr } = await supabase
       .from('users')
       .select('*')
