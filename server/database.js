@@ -144,11 +144,20 @@ export const getVehicleOwner = async (plateNumber, countryCode = 'IN') => {
 
   if (error || !data) return null;
 
+  const { data: logs } = await supabase
+    .from('parking_logs')
+    .select('*')
+    .eq('plate_number', normalized)
+    .order('timestamp', { ascending: false })
+    .limit(1);
+
   return {
     ...data,
     phone_number: data.users.phone_number,
     owner_email: data.users.email,
-    owner_whatsapp: data.users.whatsapp_number
+    owner_whatsapp: data.users.whatsapp_number,
+    in_out_status: logs && logs.length > 0 ? logs[0].action : null,
+    in_out_time: logs && logs.length > 0 ? logs[0].timestamp : null
   };
 };
 
@@ -164,7 +173,24 @@ export const lookupVehicleGlobal = async (rawPlateInput) => {
 
   if (error) throw error;
   
-  return (data || []).map(m => ({
+  const matches = data || [];
+  for (let m of matches) {
+    const { data: logs } = await supabase
+      .from('parking_logs')
+      .select('*')
+      .eq('plate_number', m.plate_number)
+      .order('timestamp', { ascending: false })
+      .limit(1);
+    if (logs && logs.length > 0) {
+      m.in_out_status = logs[0].action;
+      m.in_out_time = logs[0].timestamp;
+    } else {
+      m.in_out_status = null;
+      m.in_out_time = null;
+    }
+  }
+
+  return matches.map(m => ({
     ...m,
     owner_phone: m.users?.phone_number || null,
     owner_email: m.users?.email || null,
@@ -175,10 +201,11 @@ export const lookupVehicleGlobal = async (rawPlateInput) => {
 export const toggleDnd = async (ownerId, plateNumber, dndStatus, countryCode = 'IN') => {
   const supabase = getSupabase();
   const normalized = normalizePlate(plateNumber, countryCode);
+  const isDnd = dndStatus === 1 || dndStatus === true || dndStatus === '1' || dndStatus === 'true' || Boolean(dndStatus && dndStatus !== '0' && dndStatus !== 'false');
   
   const { data, error } = await supabase
     .from('vehicles')
-    .update({ dnd: dndStatus ? 1 : 0 })
+    .update({ dnd: isDnd ? 1 : 0 })
     .eq('plate_number', normalized)
     .eq('owner_id', ownerId)
     .select()
@@ -195,7 +222,25 @@ export const getOwnerVehicles = async (ownerId) => {
     .select('*')
     .eq('owner_id', ownerId);
   if (error) throw error;
-  return data || [];
+  
+  const vehicles = data || [];
+  for (let v of vehicles) {
+    const { data: logs } = await supabase
+      .from('parking_logs')
+      .select('*')
+      .eq('plate_number', v.plate_number)
+      .order('timestamp', { ascending: false })
+      .limit(1);
+    if (logs && logs.length > 0) {
+      v.in_out_status = logs[0].action;
+      v.in_out_time = logs[0].timestamp;
+    } else {
+      v.in_out_status = null;
+      v.in_out_time = null;
+    }
+  }
+
+  return vehicles;
 };
 
 export const updateReminders = async (ownerId, plateNumber, fastag, puc, insurance, countryCode = 'IN') => {

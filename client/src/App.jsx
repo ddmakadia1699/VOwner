@@ -1204,7 +1204,8 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
     const parts = plateKey.split(':');
     const country = parts.length === 2 ? parts[0] : 'IN';
     const rawPlate = parts.length === 2 ? parts[1] : plateKey;
-    const nextDnd = currentDnd === 1 ? 0 : 1;
+    const isCurrentlyDnd = currentDnd === 1 || currentDnd === true || currentDnd === '1' || currentDnd === 'true' || Boolean(currentDnd && currentDnd !== '0' && currentDnd !== 'false');
+    const nextDnd = isCurrentlyDnd ? 0 : 1;
 
     try {
       const res = await authFetch(`${SOCKET_URL}/api/vehicles/dnd`, {
@@ -1533,29 +1534,55 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
               
               {registeredPlates.map(plate => (
                 <div key={plate.id} className="vehicle-card">
-                  <div className="vehicle-card-header">
+                  <div className="vehicle-card-header" style={{ flexWrap: 'wrap', gap: 8 }}>
                     <DynamicPlate plateNumber={plate.plate_number} />
-                    <span className={`pill ${plate.is_verified === 1 ? 'pill-success' : plate.verification_status === 'pending' ? 'pill-warning' : 'pill-muted'}`}>
-                      {plate.is_verified === 1 ? <ShieldCheck size={12} /> : null}
-                      {plate.is_verified === 1 ? 'Verified RC' : plate.verification_status === 'pending' ? 'Pending Verification' : 'Verification Required'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                      <span className={`pill ${plate.is_verified === 1 ? 'pill-success' : plate.verification_status === 'pending' ? 'pill-warning' : 'pill-muted'}`}>
+                        {plate.is_verified === 1 ? <ShieldCheck size={12} /> : null}
+                        {plate.is_verified === 1 ? 'Verified RC' : plate.verification_status === 'pending' ? 'Pending Verification' : 'Verification Required'}
+                      </span>
+                      {plate.in_out_status ? (
+                        <span className={`pill ${plate.in_out_status === 'entered' ? 'pill-success' : 'pill-muted'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: plate.in_out_status === 'entered' ? 'var(--success)' : 'var(--text-muted)' }}></span>
+                          {plate.in_out_status === 'entered' ? 'Parked IN' : 'Exited OUT'}
+                          {plate.in_out_time ? ` (${new Date(plate.in_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                        </span>
+                      ) : (
+                        <span className="pill pill-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)' }}></span>
+                          Status: Not Logged
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="vehicle-card-body">
                     {/* DND and Parking Log Controls Grid */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                       <button 
-                        onClick={() => handleToggleDnd(plate.plate_number, plate.dnd === 1)} 
-                        className={`btn ${plate.dnd === 1 ? 'btn-secondary' : 'btn-primary'}`} 
+                        onClick={() => handleToggleDnd(plate.plate_number, plate.dnd)} 
+                        className={`btn ${(plate.dnd === 1 || plate.dnd === true || plate.dnd === '1') ? 'btn-secondary' : 'btn-primary'}`} 
                         style={{ width: 'auto', padding: '8px 14px', fontSize: 11.5, borderRadius: 10, gap: 5 }}
                       >
-                        {plate.dnd === 1 ? <BellOff size={14} color="var(--danger)" /> : <Bell size={14} color="var(--success)" />}
-                        <span>{plate.dnd === 1 ? 'DND Active' : 'Calls Active'}</span>
+                        {(plate.dnd === 1 || plate.dnd === true || plate.dnd === '1') ? <BellOff size={14} color="var(--danger)" /> : <Bell size={14} color="var(--success)" />}
+                        <span>{(plate.dnd === 1 || plate.dnd === true || plate.dnd === '1') ? 'DND Active' : 'Calls Active'}</span>
                       </button>
 
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-secondary" onClick={() => handleCheckInOut(plate.plate_number, 'entered')} style={{ width: 'auto', padding: '8px 12px', fontSize: 11.5, borderRadius: 10 }}>In</button>
-                        <button className="btn btn-secondary" onClick={() => handleCheckInOut(plate.plate_number, 'exited')} style={{ width: 'auto', padding: '8px 12px', fontSize: 11.5, borderRadius: 10 }}>Out</button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button 
+                          className={`btn ${plate.in_out_status === 'entered' ? 'btn-success' : 'btn-secondary'}`} 
+                          onClick={() => handleCheckInOut(plate.plate_number, 'entered')} 
+                          style={{ width: 'auto', padding: '8px 12px', fontSize: 11.5, borderRadius: 10, fontWeight: plate.in_out_status === 'entered' ? 700 : 500, background: plate.in_out_status === 'entered' ? 'var(--success)' : undefined, color: plate.in_out_status === 'entered' ? 'white' : undefined }}
+                        >
+                          In
+                        </button>
+                        <button 
+                          className={`btn ${plate.in_out_status === 'exited' ? 'btn-secondary' : 'btn-secondary'}`} 
+                          onClick={() => handleCheckInOut(plate.plate_number, 'exited')} 
+                          style={{ width: 'auto', padding: '8px 12px', fontSize: 11.5, borderRadius: 10, fontWeight: plate.in_out_status === 'exited' ? 700 : 500, background: plate.in_out_status === 'exited' ? 'var(--danger)' : undefined, color: plate.in_out_status === 'exited' ? 'white' : undefined }}
+                        >
+                          Out
+                        </button>
                       </div>
                     </div>
 
