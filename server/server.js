@@ -220,6 +220,23 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
+const optionalAuthUser = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        req.userId = user.id;
+      }
+    } catch (err) {
+      // Ignore token validation error for optional auth
+    }
+  }
+  next();
+};
+
 const authenticateAdmin = (req, res, next) => {
   const adminSecret = req.headers['x-admin-secret'];
   if (adminSecret !== 'ceo2026') {
@@ -229,28 +246,27 @@ const authenticateAdmin = (req, res, next) => {
 };
 
 const checkSearchRateLimit = (req, res, next) => {
-  const userId = req.userId;
-  if (!userId) return next();
+  const identifier = req.userId || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'anonymous';
 
   const now = Date.now();
   const ONE_HOUR = 60 * 60 * 1000;
-  const LIMIT = 5;
+  const LIMIT = 15;
 
-  const record = searchRateLimits.get(userId);
+  const record = searchRateLimits.get(identifier);
   if (!record) {
-    searchRateLimits.set(userId, { count: 1, startTime: now });
+    searchRateLimits.set(identifier, { count: 1, startTime: now });
     return next();
   }
 
   if (now - record.startTime > ONE_HOUR) {
-    searchRateLimits.set(userId, { count: 1, startTime: now });
+    searchRateLimits.set(identifier, { count: 1, startTime: now });
     return next();
   }
 
   if (record.count >= LIMIT) {
     return res.status(429).json({
       success: false,
-      error: 'Security rate limit exceeded. You can only search 5 vehicles per hour.'
+      error: 'Security rate limit exceeded. You can only search 15 vehicles per hour.'
     });
   }
 
@@ -313,7 +329,7 @@ app.get('/api/vehicles', authenticateUser, async (req, res) => {
 });
 
 // Refactored Search endpoint: matches globally without country code LOV
-app.get('/api/vehicles/owner/:plate', authenticateUser, checkSearchRateLimit, async (req, res) => {
+app.get('/api/vehicles/owner/:plate', optionalAuthUser, checkSearchRateLimit, async (req, res) => {
   const { plate } = req.params;
   try {
     const matches = await lookupVehicleGlobal(plate);
