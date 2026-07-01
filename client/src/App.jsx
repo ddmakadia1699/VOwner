@@ -924,19 +924,6 @@ function LoginPage({ showToast }) {
     }
   };
 
-  const handleGoogleSSO = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/dashboard'
-        }
-      });
-      if (error) showToast(error.message, 'error');
-    } catch (e) {
-      showToast('Google SSO failed.', 'error');
-    }
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -1056,12 +1043,7 @@ function LoginPage({ showToast }) {
             </form>
           )}
 
-          <div className="sso-divider">Or</div>
 
-          <button type="button" onClick={handleGoogleSSO} className="btn-google-sso">
-            <Globe size={18} color="var(--primary)" />
-            <span>Continue with Google</span>
-          </button>
         </div>
       </main>
     </div>
