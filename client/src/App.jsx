@@ -34,7 +34,9 @@ import {
   Trash2,
   HelpCircle,
   Eye,
-  Globe
+  Globe,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 
 const SOCKET_URL = 'http://localhost:5001';
@@ -1311,14 +1313,29 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
     const country = parts.length === 2 ? parts[0] : 'IN';
     const rawPlate = parts.length === 2 ? parts[1] : plateKey;
 
+    setRegisteredPlates(prev => prev.map(p => {
+      if (p.plate_number === plateKey) {
+        return {
+          ...p,
+          in_out_status: action,
+          in_out_time: new Date().toISOString()
+        };
+      }
+      return p;
+    }));
+
     const res = await authFetch(`${SOCKET_URL}/api/vehicles/logs`, {
       method: 'POST',
       body: JSON.stringify({ plateNumber: rawPlate, action, countryCode: country })
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`Parking check ${action} logged.`, 'success');
+      showToast(`Parking check ${action === 'entered' ? 'In (Parked)' : 'Out (Exited)'} logged.`, 'success');
+      fetchVehicles();
       if (viewingLogsPlate === plateKey) fetchPlateLogs(plateKey);
+    } else {
+      showToast('Failed to log parking status.', 'error');
+      fetchVehicles();
     }
   };
 
@@ -1537,9 +1554,9 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
                   <div className="vehicle-card-header" style={{ flexWrap: 'wrap', gap: 8 }}>
                     <DynamicPlate plateNumber={plate.plate_number} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
-                      <span className={`pill ${plate.is_verified === 1 ? 'pill-success' : plate.verification_status === 'pending' ? 'pill-warning' : 'pill-muted'}`}>
-                        {plate.is_verified === 1 ? <ShieldCheck size={12} /> : null}
-                        {plate.is_verified === 1 ? 'Verified RC' : plate.verification_status === 'pending' ? 'Pending Verification' : 'Verification Required'}
+                      <span className={`pill ${plate.is_verified === 1 ? 'pill-success' : plate.rc_doc ? 'pill-warning' : 'pill-muted'}`}>
+                        {plate.is_verified === 1 ? <ShieldCheck size={12} /> : plate.rc_doc ? <Clock size={12} /> : <AlertCircle size={12} />}
+                        {plate.is_verified === 1 ? 'Verified RC' : plate.rc_doc ? 'Pending Review (RC Uploaded)' : 'RC Upload Required'}
                       </span>
                       {plate.in_out_status ? (
                         <span className={`pill ${plate.in_out_status === 'entered' ? 'pill-success' : 'pill-muted'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -1587,14 +1604,19 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
                     </div>
 
                     {/* Expandable Verification Box if unverified */}
-                    {plate.is_verified !== 1 && plate.verification_status !== 'pending' && (
-                      <div className="verification-box">
-                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.45, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                          <ShieldAlert size={14} color="var(--primary)" style={{ flexShrink: 0, marginTop: 1 }} />
-                          <span>🔒 <strong>Legal Privacy check</strong>: Blurring out home address is recommended before upload.</span>
+                    {plate.is_verified !== 1 && (
+                      <div className="verification-box" style={{ marginTop: 14 }}>
+                        <div style={{ fontSize: 11, color: plate.rc_doc ? 'var(--success)' : 'var(--text-muted)', lineHeight: 1.45, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                          {plate.rc_doc ? <CheckCircle size={15} color="var(--success)" style={{ flexShrink: 0, marginTop: 1 }} /> : <ShieldAlert size={15} color="var(--primary)" style={{ flexShrink: 0, marginTop: 1 }} />}
+                          <span>
+                            {plate.rc_doc 
+                              ? <strong>📄 RC Document uploaded successfully and is currently under review by our team. You can replace/re-upload below if needed.</strong>
+                              : <>🔒 <strong>Legal Privacy check</strong>: Blurring out home address is recommended before upload.</>
+                            }
+                          </span>
                         </div>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                           <input 
                             type="checkbox" 
                             id={`consent-${plate.plate_number}`}
@@ -1603,7 +1625,7 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
                             style={{ width: 15, height: 15, cursor: 'pointer' }}
                           />
                           <label htmlFor={`consent-${plate.plate_number}`} style={{ fontSize: 11.5, color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
-                            I consent to securely upload RC.
+                            {plate.rc_doc ? 'I consent to replace my uploaded RC document.' : 'I consent to securely upload RC.'}
                           </label>
                         </div>
 
@@ -1619,8 +1641,9 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
                           className={`custom-file-upload ${!rcConsents[plate.plate_number] ? 'disabled' : ''}`}
                           onClick={() => rcConsents[plate.plate_number] && document.getElementById(`rc-file-${plate.plate_number}`).click()}
                           disabled={!rcConsents[plate.plate_number]}
+                          style={{ marginTop: 6 }}
                         >
-                          <Plus size={14} /> Upload RC Document
+                          <Plus size={14} /> {plate.rc_doc ? 'Replace RC Document' : 'Upload RC Document'}
                         </button>
                       </div>
                     )}

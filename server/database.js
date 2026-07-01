@@ -123,7 +123,7 @@ export const registerVehicle = async (ownerId, plateNumber, countryCode = 'IN') 
       plate_number: normalized, 
       is_verified: 0, 
       dnd: 0, 
-      verification_status: 'pending' 
+      verification_status: 'unverified' 
     }])
     .select()
     .single();
@@ -150,6 +150,10 @@ export const getVehicleOwner = async (plateNumber, countryCode = 'IN') => {
     .eq('plate_number', normalized)
     .order('timestamp', { ascending: false })
     .limit(1);
+
+  if (data.is_verified !== 1 && !data.rc_doc && data.verification_status === 'pending') {
+    data.verification_status = 'unverified';
+  }
 
   return {
     ...data,
@@ -187,6 +191,9 @@ export const lookupVehicleGlobal = async (rawPlateInput) => {
     } else {
       m.in_out_status = null;
       m.in_out_time = null;
+    }
+    if (m.is_verified !== 1 && !m.rc_doc && m.verification_status === 'pending') {
+      m.verification_status = 'unverified';
     }
   }
 
@@ -237,6 +244,9 @@ export const getOwnerVehicles = async (ownerId) => {
     } else {
       v.in_out_status = null;
       v.in_out_time = null;
+    }
+    if (v.is_verified !== 1 && !v.rc_doc && v.verification_status === 'pending') {
+      v.verification_status = 'unverified';
     }
   }
 
