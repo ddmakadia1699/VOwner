@@ -516,12 +516,18 @@ app.post('/api/chats/get-or-create', optionalAuthUser, async (req, res) => {
     const msgCount = await countMessagesInLast24Hours(chat.id, req.userId);
 
     const ownerDetail = await getVehicleOwner(plateNumber, countryCode || 'IN');
-    const ownerSocketId = userSockets.get(ownerDetail.owner_id);
-    const ownerOnline = !!ownerSocketId;
+    let ownerOnline = false;
+    
+    if (ownerDetail) {
+      const ownerSocketId = userSockets.get(ownerDetail.owner_id);
+      ownerOnline = !!ownerSocketId;
 
-    if (!ownerOnline) {
-      const ownerProfile = await getUserProfile(ownerDetail.owner_id);
-      await dispatchOfflineNotifications(ownerProfile, plateNumber);
+      if (!ownerOnline) {
+        const ownerProfile = await getUserProfile(ownerDetail.owner_id);
+        if (ownerProfile) {
+          await dispatchOfflineNotifications(ownerProfile, plateNumber);
+        }
+      }
     }
 
     res.json({ success: true, chat, messages, messagesSentToday: msgCount, ownerOffline: !ownerOnline, callerId: req.userId });
