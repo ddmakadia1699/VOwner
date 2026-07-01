@@ -329,14 +329,20 @@ export const getOrCreateChat = async (plateNumber, callerId, countryCode = 'IN')
 
   if (!vehicle) throw new Error('Vehicle owner not registered.');
 
-  let { data: chat, error } = await supabase
+  let { data: chats, error } = await supabase
     .from('chats')
     .select('*')
     .eq('plate_number', normalized)
     .eq('caller_id', callerId)
-    .maybeSingle();
+    .limit(1);
 
-  if (!chat) {
+  if (error && error.code !== 'PGRST116') {
+    // Ignore PGRST116 (multiple rows), but throw other errors
+    console.error('Error fetching chat:', error);
+  }
+
+  let chat;
+  if (!chats || chats.length === 0) {
     const { data: inserted, error: insertErr } = await supabase
       .from('chats')
       .insert([{ plate_number: normalized, caller_id: callerId }])
@@ -344,6 +350,8 @@ export const getOrCreateChat = async (plateNumber, callerId, countryCode = 'IN')
       .single();
     if (insertErr) throw insertErr;
     chat = inserted;
+  } else {
+    chat = chats[0];
   }
   return chat;
 };
