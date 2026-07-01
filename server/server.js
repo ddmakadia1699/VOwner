@@ -257,7 +257,7 @@ const optionalAuthUser = async (req, res, next) => {
   // Deterministic fallback for guest callers based on IP and User-Agent
   const guestId = getGuestIdFromRequest(req);
   try {
-    await getOrCreateUser(guestId, 'Anonymous Guest');
+    await getOrCreateUser(guestId, null);
     req.userId = guestId;
   } catch (err) {
     req.userId = guestId;
@@ -308,7 +308,7 @@ app.post('/api/auth', async (req, res) => {
   const { id, phoneNumber } = req.body;
   try {
     const effectiveId = id || getGuestIdFromRequest(req);
-    const user = await getOrCreateUser(effectiveId, phoneNumber || 'Anonymous Guest');
+    const user = await getOrCreateUser(effectiveId, phoneNumber || null);
     res.json({ success: true, user });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -689,7 +689,7 @@ io.on('connection', (socket) => {
       if (!senderId || senderId === '00000000-0000-4000-a000-000000000001') {
         senderId = getGuestIdFromSocket(socket);
       }
-      await getOrCreateUser(senderId, 'Anonymous Guest');
+      await getOrCreateUser(senderId, null);
 
       const blocked = await isBlocked(senderId, recipientId);
       if (blocked) {
@@ -718,7 +718,7 @@ io.on('connection', (socket) => {
       if (!callerId || callerId === '00000000-0000-4000-a000-000000000001') {
         callerId = getGuestIdFromSocket(socket);
       }
-      await getOrCreateUser(callerId, 'Anonymous Guest');
+      await getOrCreateUser(callerId, null);
 
       const vehicleOwner = await getVehicleOwner(rawPlate, country);
       if (!vehicleOwner) {
