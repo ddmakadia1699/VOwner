@@ -95,11 +95,11 @@ p {
 
 /* Navigation Header */
 .chat-header, header {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-bottom: 1px solid var(--border-card) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
   color: var(--text-primary) !important;
-  backdrop-filter: blur(8px);
-  padding: 16px 20px !important;
+  backdrop-filter: blur(12px);
+  padding: 14px 24px !important;
   display: flex !important;
   flex-direction: row !important;
   justify-content: space-between !important;
@@ -107,11 +107,44 @@ p {
   position: sticky;
   top: 0;
   z-index: 50;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.01);
 }
 
-.chat-header h1, header h1 {
-  color: var(--text-primary) !important;
-  font-size: 20px !important;
+.logo-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+  transition: all 0.2s ease;
+}
+
+.logo-badge:hover {
+  transform: translateY(-1px) rotate(-3deg);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, var(--text-primary) 30%, #4b5563 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+}
+
+.logo-dot {
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  -webkit-text-fill-color: initial;
+  margin-left: 1px;
 }
 
 /* Panels & Cards */

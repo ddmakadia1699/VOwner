@@ -714,10 +714,13 @@ function SearchPage({ isOwnerLoggedIn, handleLogout, requestVerificationWrapper,
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       {/* Clean Premium Navbar */}
       <header className="chat-header">
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <h1 style={{ fontSize: 20, color: 'var(--primary)', margin: 0, fontWeight: 800, letterSpacing: '-0.03em' }}>
-            Sampark<span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>.net</span>
-          </h1>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="logo-badge">
+            <Car size={16} color="white" />
+          </div>
+          <span className="logo-text">
+            Sampark<span className="logo-dot">.net</span>
+          </span>
         </Link>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/admin/login" className="btn btn-secondary" style={{ width: 'auto', padding: '8px 12px', fontSize: 11.5, textDecoration: 'none', display: 'flex', gap: 4, borderRadius: 8 }}>
@@ -938,9 +941,14 @@ function LoginPage({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <header className="chat-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to="/" style={{ color: 'var(--text-primary)' }}><ArrowLeft size={24} /></Link>
-          <h1 style={{ fontSize: 18 }}>Owner Portal</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link to="/" style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}><ArrowLeft size={24} /></Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="logo-badge" style={{ width: 26, height: 26, borderRadius: 8 }}>
+              <Car size={13} color="white" />
+            </div>
+            <span style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>Owner Portal</span>
+          </div>
         </div>
       </header>
 
@@ -1448,12 +1456,17 @@ function DashboardPage({ ownerPhone, handleLogout, showToast }) {
       )}
 
       <header className="chat-header">
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 800 }}>Owner Dashboard</h1>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Logged in: {ownerPhone}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="logo-badge" style={{ width: 32, height: 32, borderRadius: 10 }}>
+            <Car size={16} color="white" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Owner Dashboard</h1>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Logged in: {ownerPhone}</span>
+          </div>
         </div>
-        <button className="btn btn-secondary" onClick={handleLogout} style={{ width: 'auto', padding: '8px 12px', color: 'var(--danger)', borderRadius: 8 }}>
-          <LogOut size={16} />
+        <button className="btn btn-secondary" onClick={handleLogout} style={{ width: 'auto', padding: '8px 12px', color: 'var(--danger)', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <LogOut size={14} /> Logout
         </button>
       </header>
 
@@ -1858,7 +1871,8 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     <div className="chat-container">
       <header className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><ArrowLeft size={24} /></button>
+          <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ArrowLeft size={24} /></button>
+          <div style={{ width: 1, height: 20, background: 'var(--border-card)' }}></div>
           <DynamicPlate plateNumber={plate} className="mini" />
         </div>
 
@@ -1927,9 +1941,14 @@ function AdminLoginPage({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <header className="chat-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to="/" style={{ color: 'var(--text-primary)' }}><ArrowLeft size={24} /></Link>
-          <h1 style={{ fontSize: 18 }}>CEO Admin Portal</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link to="/" style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}><ArrowLeft size={24} /></Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="logo-badge" style={{ width: 26, height: 26, borderRadius: 8 }}>
+              <Shield size={13} color="white" />
+            </div>
+            <span style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>CEO Admin Portal</span>
+          </div>
         </div>
       </header>
 
@@ -2049,11 +2068,16 @@ function AdminDashboardPage({ showToast }) {
       )}
 
       <header className="chat-header">
-        <div>
-          <h1 style={{ fontSize: 18, color: 'var(--primary)', fontWeight: 800 }}>CEO Control Center</h1>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Security Check: Verified</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="logo-badge" style={{ width: 32, height: 32, borderRadius: 10 }}>
+            <Shield size={16} color="white" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 16, fontWeight: 900, margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>CEO Control Center</h1>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Security Check: Verified</span>
+          </div>
         </div>
-        <button className="btn btn-secondary" onClick={() => { localStorage.removeItem('vehicle_app_admin_secret'); navigate('/'); }} style={{ width: 'auto', padding: '8px 12px', borderRadius: 8 }}>Logout CEO</button>
+        <button className="btn btn-secondary" onClick={() => { localStorage.removeItem('vehicle_app_admin_secret'); navigate('/'); }} style={{ width: 'auto', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700 }}>Logout CEO</button>
       </header>
 
       <main style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
