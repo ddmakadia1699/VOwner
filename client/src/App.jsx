@@ -307,7 +307,7 @@ export default function App() {
       if (socketRef.current) socketRef.current.disconnect();
       stopRingtone();
     };
-  }, [userId]);
+  }, []);
 
   const triggerRingtone = () => {
     stopRingtone();
