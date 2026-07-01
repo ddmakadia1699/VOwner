@@ -2002,11 +2002,11 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
         </div>
       </header>
 
-      {/* Explicit Notification Buttons (When Owner Offline) */}
-      {ownerIsOffline && activeChat?.recipientId !== 'unregistered' && (
+      {/* Explicit Notification Buttons */}
+      {activeChat?.recipientId !== 'unregistered' && (
         <div style={{ background: 'rgba(79, 70, 229, 0.05)', padding: '12px 16px', borderBottom: '1px solid var(--border-card)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>Owner is currently offline.</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Send a 1-time urgent notification to their device.</span>
+          <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>Urgent Contact Request</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Send a 1-time urgent notification to the owner's device.</span>
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button 
               className="btn" 
