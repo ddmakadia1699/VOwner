@@ -36,7 +36,9 @@ import {
   Eye,
   Globe,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 
 const SOCKET_URL = 'http://localhost:5001';
@@ -1834,8 +1836,10 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
   const [messagesSentToday, setMessagesSentToday] = useState(0);
   const [chatError, setChatError] = useState('');
 
-  // Offline status pill flags
-  const [ownerOfflineAlert, setOwnerOfflineAlert] = useState(false);
+  // Explicit notification UI state
+  const [ownerIsOffline, setOwnerIsOffline] = useState(false);
+  const [whatsappSent, setWhatsappSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const isAutoCall = location.search.includes('call=true');
 
@@ -1895,7 +1899,7 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
         setMessagesSentToday(data.messagesSentToday || 0);
 
         if (data.ownerOffline) {
-          setOwnerOfflineAlert(true);
+          setOwnerIsOffline(true);
         }
 
         if (socketRef.current) {
@@ -1941,6 +1945,42 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     }
   };
 
+  const handleNotifyWhatsApp = async () => {
+    if (!activeChat) return;
+    try {
+      const res = await authFetch(`${SOCKET_URL}/api/notifications/whatsapp`, {
+        method: 'POST',
+        body: JSON.stringify({ chatId: activeChat.id, plateNumber: activeChat.plate_number })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('WhatsApp alert sent to owner.', 'success');
+        setWhatsappSent(true);
+      } else {
+        showToast(data.error || 'Failed to send WhatsApp alert', 'error');
+        if (data.error?.includes('limit reached')) setWhatsappSent(true);
+      }
+    } catch (err) {}
+  };
+
+  const handleNotifyEmail = async () => {
+    if (!activeChat) return;
+    try {
+      const res = await authFetch(`${SOCKET_URL}/api/notifications/email`, {
+        method: 'POST',
+        body: JSON.stringify({ chatId: activeChat.id, plateNumber: activeChat.plate_number })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Email alert sent to owner.', 'success');
+        setEmailSent(true);
+      } else {
+        showToast(data.error || 'Failed to send Email alert', 'error');
+        if (data.error?.includes('limit reached')) setEmailSent(true);
+      }
+    } catch (err) {}
+  };
+
   const effectiveUserId = userId || localStorage.getItem('vehicle_app_user_id') || '';
 
   return (
@@ -1962,11 +2002,31 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
         </div>
       </header>
 
-      {/* Dispatched Notification confirmation alerts */}
-      {ownerOfflineAlert && (
-        <div style={{ background: 'rgba(79, 70, 229, 0.08)', color: 'var(--primary)', padding: '10px 16px', borderBottom: '1px solid var(--border-card)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Bell size={14} style={{ flexShrink: 0 }} />
-          <span>Owner is offline. Dispatched alert notifications to their WhatsApp & Email.</span>
+      {/* Explicit Notification Buttons (When Owner Offline) */}
+      {ownerIsOffline && activeChat?.recipientId !== 'unregistered' && (
+        <div style={{ background: 'rgba(79, 70, 229, 0.05)', padding: '12px 16px', borderBottom: '1px solid var(--border-card)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>Owner is currently offline.</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Send a 1-time urgent notification to their device.</span>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button 
+              className="btn" 
+              onClick={handleNotifyWhatsApp} 
+              disabled={whatsappSent}
+              style={{ flex: 1, padding: '8px', fontSize: 12, background: whatsappSent ? 'var(--border-card)' : '#25D366', color: whatsappSent ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 8 }}
+            >
+              <MessageCircle size={14} style={{ marginRight: 6 }} /> 
+              {whatsappSent ? 'WhatsApp Sent' : 'WhatsApp Alert'}
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleNotifyEmail} 
+              disabled={emailSent}
+              style={{ flex: 1, padding: '8px', fontSize: 12, borderRadius: 8, background: emailSent ? 'var(--border-card)' : 'var(--primary)', color: emailSent ? 'var(--text-muted)' : '#fff', border: 'none' }}
+            >
+              <Mail size={14} style={{ marginRight: 6 }} /> 
+              {emailSent ? 'Email Sent' : 'Email Alert'}
+            </button>
+          </div>
         </div>
       )}
 

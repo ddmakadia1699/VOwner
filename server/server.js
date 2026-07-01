@@ -102,105 +102,83 @@ const autoDetectCountry = (plateStr) => {
 };
 
 // --- Offline Notification Dispatcher Helper ---
-const dispatchOfflineNotifications = async (ownerProfile, plateNumber) => {
-  const { phone_number, email, whatsapp_number } = ownerProfile;
+const notificationLimits = new Map(); // Tracks { whatsapp: true, email: true } per chatId
+
+const dispatchWhatsAppAlert = async (ownerProfile, plateNumber) => {
+  const { phone_number, whatsapp_number } = ownerProfile;
   const targetWhatsapp = whatsapp_number || phone_number;
+  if (!targetWhatsapp) throw new Error("Owner has no WhatsApp number configured.");
+
   const formattedPlate = plateNumber.toUpperCase();
   const chatLink = `http://localhost:5173/chat/${plateNumber}`;
-
-  // 1. WhatsApp Dispatch (Official Meta Cloud API client logic)
   const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const waTemplate = process.env.WHATSAPP_TEMPLATE_NAME || "hello_world";
+  const waTemplate = process.env.WHATSAPP_TEMPLATE_NAME || "vehicle_contact_alert";
 
-  if (waToken && waPhoneId && targetWhatsapp) {
-    try {
-      let cleanWaNumber = targetWhatsapp.replace(/[^0-9]/g, '');
-      if (cleanWaNumber.length === 10) {
-        cleanWaNumber = '91' + cleanWaNumber;
-      }
-      const url = `https://graph.facebook.com/v19.0/${waPhoneId}/messages`;
-      const body = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: cleanWaNumber,
-        type: "template",
-        template: {
-          name: waTemplate,
-          language: { code: "en_US" },
-          components: waTemplate !== "hello_world" ? [
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: formattedPlate },
-                { type: "text", text: chatLink }
-              ]
-            }
-          ] : undefined
-        }
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${waToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-      const data = await response.json();
-      console.log(`[WHATSAPP DISPATCH SUCCESS] Sent alert to WhatsApp: ${cleanWaNumber}. Meta status:`, data);
-    } catch (err) {
-      console.error(`[WHATSAPP DISPATCH ERROR] Failed to send WhatsApp alert:`, err.message);
-    }
-  } else {
-    console.log(`
-┌────────────────────────────────────────────────────────┐
-│  🟢 META WHATSAPP BUSINESS CLUID API DISPATCH          │
-├────────────────────────────────────────────────────────┤
-│  Recipient WhatsApp : ${targetWhatsapp || 'Not configured'}                  │
-│  Template Name      : ${waTemplate}             │
-│  Template Params    : [ "${formattedPlate}", "${chatLink}" ]   │
-│  Status             : Simulated SUCCESS (API Key Missing)│
-└────────────────────────────────────────────────────────┘
-    `);
+  if (!waToken || !waPhoneId) {
+    console.log(`[WHATSAPP DISPATCH] Simulated success (API keys missing) to ${targetWhatsapp}`);
+    return;
   }
 
-  // 2. Resend Email Dispatch (REST API)
+  let cleanWaNumber = targetWhatsapp.replace(/[^0-9]/g, '');
+  if (cleanWaNumber.length === 10) cleanWaNumber = '91' + cleanWaNumber;
+
+  const url = `https://graph.facebook.com/v19.0/${waPhoneId}/messages`;
+  const body = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: cleanWaNumber,
+    type: "template",
+    template: {
+      name: waTemplate,
+      language: { code: "en_US" },
+      components: waTemplate !== "hello_world" ? [
+        { type: "body", parameters: [{ type: "text", text: formattedPlate }, { type: "text", text: chatLink }] }
+      ] : undefined
+    }
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${waToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`WhatsApp API Error: ${errorText}`);
+  }
+};
+
+const dispatchEmailAlert = async (ownerProfile, plateNumber) => {
+  const { email } = ownerProfile;
+  if (!email) throw new Error("Owner has no email configured.");
+
+  const formattedPlate = plateNumber.toUpperCase();
+  const chatLink = `http://localhost:5173/chat/${plateNumber}`;
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
 
-  if (resendApiKey && email) {
-    try {
-      const url = 'https://api.resend.com/emails';
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [email],
-          subject: `Urgent: Contact Request for Vehicle ${formattedPlate}`,
-          html: `<p>Hi,</p><p>Someone is trying to contact you regarding your vehicle <strong>${formattedPlate}</strong>. Open this secure link to chat or call anonymously:</p><p><a href="${chatLink}">${chatLink}</a></p><p>Best,<br/>Sampark Support</p>`
-        })
-      });
-      const data = await response.json();
-      console.log(`[EMAIL DISPATCH SUCCESS] Sent alert to Email: ${email}. Resend status:`, data);
-    } catch (err) {
-      console.error(`[EMAIL DISPATCH ERROR] Failed to send Email alert:`, err.message);
-    }
-  } else {
-    console.log(`
-┌────────────────────────────────────────────────────────┐
-│  ✉️ RESEND TRANSACTIONAL EMAIL DISPATCH                │
-├────────────────────────────────────────────────────────┤
-│  Recipient Email    : ${email || 'Not configured'}                  │
-│  Subject            : Contact Request for Vehicle ${formattedPlate} │
-│  Status             : Simulated SUCCESS (API Key Missing)│
-└────────────────────────────────────────────────────────┘
-    `);
+  if (!resendApiKey) {
+    console.log(`[EMAIL DISPATCH] Simulated success (API keys missing) to ${email}`);
+    return;
+  }
+
+  const url = 'https://api.resend.com/emails';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [email],
+      subject: `Urgent: Contact Request for Vehicle ${formattedPlate}`,
+      html: `<p>Hi,</p><p>Someone is trying to contact you regarding your vehicle <strong>${formattedPlate}</strong>. Open this secure link to chat or call anonymously:</p><p><a href="${chatLink}">${chatLink}</a></p><p>Best,<br/>Sampark Support</p>`
+    })
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Resend API Error: ${errorText}`);
   }
 };
 
@@ -524,15 +502,62 @@ app.post('/api/chats/get-or-create', optionalAuthUser, async (req, res) => {
 
       if (!ownerOnline) {
         const ownerProfile = await getUserProfile(ownerDetail.owner_id);
-        if (ownerProfile) {
-          await dispatchOfflineNotifications(ownerProfile, plateNumber);
-        }
+        // Notifications are now explicitly handled via API endpoints by the frontend
       }
     }
 
     res.json({ success: true, chat, messages, messagesSentToday: msgCount, ownerOffline: !ownerOnline, callerId: req.userId });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Explicit Notification Endpoints
+app.post('/api/notifications/whatsapp', optionalAuthUser, checkSearchRateLimit, async (req, res) => {
+  const { chatId, plateNumber } = req.body;
+  if (!chatId || !plateNumber) return res.status(400).json({ success: false, error: 'Missing parameters.' });
+  
+  const limits = notificationLimits.get(chatId) || { whatsapp: false, email: false };
+  if (limits.whatsapp) return res.status(400).json({ success: false, error: 'WhatsApp notification limit reached for this session.' });
+
+  try {
+    const ownerDetail = await getVehicleOwner(plateNumber);
+    if (!ownerDetail) return res.status(404).json({ success: false, error: 'Owner not found.' });
+    
+    const ownerProfile = await getUserProfile(ownerDetail.owner_id);
+    if (!ownerProfile) return res.status(404).json({ success: false, error: 'Owner profile not found.' });
+
+    await dispatchWhatsAppAlert(ownerProfile, plateNumber);
+    
+    limits.whatsapp = true;
+    notificationLimits.set(chatId, limits);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/notifications/email', optionalAuthUser, checkSearchRateLimit, async (req, res) => {
+  const { chatId, plateNumber } = req.body;
+  if (!chatId || !plateNumber) return res.status(400).json({ success: false, error: 'Missing parameters.' });
+  
+  const limits = notificationLimits.get(chatId) || { whatsapp: false, email: false };
+  if (limits.email) return res.status(400).json({ success: false, error: 'Email notification limit reached for this session.' });
+
+  try {
+    const ownerDetail = await getVehicleOwner(plateNumber);
+    if (!ownerDetail) return res.status(404).json({ success: false, error: 'Owner not found.' });
+    
+    const ownerProfile = await getUserProfile(ownerDetail.owner_id);
+    if (!ownerProfile) return res.status(404).json({ success: false, error: 'Owner profile not found.' });
+
+    await dispatchEmailAlert(ownerProfile, plateNumber);
+    
+    limits.email = true;
+    notificationLimits.set(chatId, limits);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -738,9 +763,6 @@ io.on('connection', (socket) => {
 
       const ownerSocketId = userSockets.get(ownerId);
       if (!ownerSocketId) {
-        // Owner offline VoIP fallback trigger
-        const ownerProfile = await getUserProfile(ownerId);
-        await dispatchOfflineNotifications(ownerProfile, plateNumber);
         return socket.emit('call-failed', { 
           reason: 'Owner offline. Secure alerts dispatched to their WhatsApp & Email.',
           offlineDispatched: true
