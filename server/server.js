@@ -521,7 +521,11 @@ app.post('/api/notifications/whatsapp', optionalAuthUser, checkSearchRateLimit, 
   if (limits.whatsapp) return res.status(400).json({ success: false, error: 'WhatsApp notification limit reached for this session.' });
 
   try {
-    const ownerDetail = await getVehicleOwner(plateNumber);
+    const parts = plateNumber.split(':');
+    const country = parts.length === 2 ? parts[0] : 'IN';
+    const rawPlate = parts.length === 2 ? parts[1] : plateNumber;
+
+    const ownerDetail = await getVehicleOwner(rawPlate, country);
     if (!ownerDetail) return res.status(404).json({ success: false, error: 'Owner not found.' });
     
     const ownerProfile = await getUserProfile(ownerDetail.owner_id);
@@ -545,7 +549,11 @@ app.post('/api/notifications/email', optionalAuthUser, checkSearchRateLimit, asy
   if (limits.email) return res.status(400).json({ success: false, error: 'Email notification limit reached for this session.' });
 
   try {
-    const ownerDetail = await getVehicleOwner(plateNumber);
+    const parts = plateNumber.split(':');
+    const country = parts.length === 2 ? parts[0] : 'IN';
+    const rawPlate = parts.length === 2 ? parts[1] : plateNumber;
+
+    const ownerDetail = await getVehicleOwner(rawPlate, country);
     if (!ownerDetail) return res.status(404).json({ success: false, error: 'Owner not found.' });
     
     const ownerProfile = await getUserProfile(ownerDetail.owner_id);
