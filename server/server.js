@@ -179,7 +179,7 @@ const dispatchOfflineNotifications = async (ownerProfile, plateNumber) => {
         body: JSON.stringify({
           from: fromEmail,
           to: [email],
-          subject: `⚠️ Urgent: Contact Request for Vehicle ${formattedPlate}`,
+          subject: `Urgent: Contact Request for Vehicle ${formattedPlate}`,
           html: `<p>Hi,</p><p>Someone is trying to contact you regarding your vehicle <strong>${formattedPlate}</strong>. Open this secure link to chat or call anonymously:</p><p><a href="${chatLink}">${chatLink}</a></p><p>Best,<br/>Sampark Support</p>`
         })
       });
