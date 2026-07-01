@@ -115,7 +115,10 @@ const dispatchOfflineNotifications = async (ownerProfile, plateNumber) => {
 
   if (waToken && waPhoneId && targetWhatsapp) {
     try {
-      const cleanWaNumber = targetWhatsapp.replace(/[^0-9]/g, '');
+      let cleanWaNumber = targetWhatsapp.replace(/[^0-9]/g, '');
+      if (cleanWaNumber.length === 10) {
+        cleanWaNumber = '91' + cleanWaNumber;
+      }
       const url = `https://graph.facebook.com/v19.0/${waPhoneId}/messages`;
       const body = {
         messaging_product: "whatsapp",
