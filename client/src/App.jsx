@@ -84,6 +84,7 @@ const autoDetectCountry = (plateStr) => {
 const authFetch = async (url, options = {}) => {
   const supabase = getSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || localStorage.getItem('vehicle_app_token');
   const currentUserId = localStorage.getItem('vehicle_app_user_id') || '';
 
   const headers = {
