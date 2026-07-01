@@ -85,10 +85,16 @@ const authFetch = async (url, options = {}) => {
   const supabase = getSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || localStorage.getItem('vehicle_app_token');
+  let guestId = localStorage.getItem('vehicle_app_guest_id');
+  if (!guestId) {
+    guestId = '00000000-0000-4000-8000-' + Math.floor(100000000000 + Math.random() * 900000000000).toString().substring(0, 12);
+    localStorage.setItem('vehicle_app_guest_id', guestId);
+  }
 
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'x-guest-id': guestId,
     ...options.headers
   };
   const response = await fetch(url, { ...options, headers });
@@ -390,10 +396,11 @@ export default function App() {
     setCallState('calling');
     setCallStatusText('Calling...');
     
+    const effectiveCallerId = userId || localStorage.getItem('vehicle_app_user_id') || localStorage.getItem('vehicle_app_guest_id') || '00000000-0000-4000-a000-000000000001';
     const callDetails = {
       chatId,
       plateNumber,
-      callerId: userId,
+      callerId: effectiveCallerId,
       recipientId
     };
 
@@ -407,7 +414,7 @@ export default function App() {
       socketRef.current.emit('call-user', {
         chatId,
         plateNumber,
-        callerId: userId,
+        callerId: effectiveCallerId,
         offer
       });
     } catch (e) {
@@ -1881,9 +1888,10 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     if (!chatInput.trim() || !activeChat) return;
 
     if (socketRef.current) {
+      const effectiveSenderId = userId || localStorage.getItem('vehicle_app_user_id') || localStorage.getItem('vehicle_app_guest_id') || '00000000-0000-4000-a000-000000000001';
       socketRef.current.emit('send-message', {
         chatId: activeChat.id,
-        senderId: userId,
+        senderId: effectiveSenderId,
         recipientId: activeChat.recipientId,
         text: chatInput,
         plateNumber: activeChat.plate_number

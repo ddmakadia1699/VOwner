@@ -229,10 +229,20 @@ const optionalAuthUser = async (req, res, next) => {
       const { data: { user } } = await supabase.auth.getUser(token);
       if (user) {
         req.userId = user.id;
+        return next();
       }
     } catch (err) {
       // Ignore token validation error for optional auth
     }
+  }
+
+  // Fallback for guest callers / anonymous visitors
+  const guestId = req.headers['x-guest-id'] || '00000000-0000-4000-a000-000000000001';
+  try {
+    await getOrCreateUser(guestId, 'Anonymous Guest');
+    req.userId = guestId;
+  } catch (err) {
+    req.userId = '00000000-0000-4000-a000-000000000001';
   }
   next();
 };
@@ -397,7 +407,7 @@ app.post('/api/vehicles/reminders', authenticateUser, async (req, res) => {
   }
 });
 
-app.post('/api/vehicles/emergency', authenticateUser, async (req, res) => {
+app.post('/api/vehicles/emergency', optionalAuthUser, async (req, res) => {
   const { plateNumber, phone, countryCode } = req.body;
   try {
     const vehicle = await updateEmergencyContact(req.userId, plateNumber, phone, countryCode || 'IN');
@@ -479,7 +489,7 @@ app.get('/api/vehicles/logs', authenticateUser, async (req, res) => {
   }
 });
 
-app.post('/api/chats/get-or-create', authenticateUser, async (req, res) => {
+app.post('/api/chats/get-or-create', optionalAuthUser, async (req, res) => {
   const { plateNumber, countryCode } = req.body;
   try {
     const chat = await getOrCreateChat(plateNumber, req.userId, countryCode || 'IN');
@@ -519,7 +529,7 @@ app.get('/api/chats/caller', authenticateUser, async (req, res) => {
   }
 });
 
-app.get('/api/chats/:chatId/messages', authenticateUser, async (req, res) => {
+app.get('/api/chats/:chatId/messages', optionalAuthUser, async (req, res) => {
   const { chatId } = req.params;
   try {
     const messages = await getChatMessages(chatId);
