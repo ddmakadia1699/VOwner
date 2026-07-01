@@ -891,7 +891,13 @@ function LoginPage({ showToast }) {
     if (!email || !password) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/login'
+        }
+      });
       if (error) {
         showToast(error.message, 'error');
       } else {
