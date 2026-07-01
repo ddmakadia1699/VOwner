@@ -84,17 +84,12 @@ const autoDetectCountry = (plateStr) => {
 const authFetch = async (url, options = {}) => {
   const supabase = getSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || localStorage.getItem('vehicle_app_token');
-  let guestId = localStorage.getItem('vehicle_app_guest_id');
-  if (!guestId) {
-    guestId = '00000000-0000-4000-8000-' + Math.floor(100000000000 + Math.random() * 900000000000).toString().substring(0, 12);
-    localStorage.setItem('vehicle_app_guest_id', guestId);
-  }
+  const currentUserId = localStorage.getItem('vehicle_app_user_id') || '';
 
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    'x-guest-id': guestId,
+    ...(currentUserId ? { 'x-guest-id': currentUserId } : {}),
     ...options.headers
   };
   const response = await fetch(url, { ...options, headers });
@@ -138,7 +133,7 @@ export default function App() {
 
   // Authentication & Session States
   const [userId, setUserId] = useState(() => {
-    return localStorage.getItem('vehicle_app_user_id') || generateUUID();
+    return localStorage.getItem('vehicle_app_user_id') || '';
   });
   const [ownerPhone, setOwnerPhone] = useState(() => {
     return localStorage.getItem('vehicle_app_phone') || '';
@@ -235,25 +230,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('vehicle_app_user_id')) {
-      fetch(`${SOCKET_URL}/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            localStorage.setItem('vehicle_app_user_id', data.user.id);
-            setUserId(data.user.id);
+    const currentStoredId = localStorage.getItem('vehicle_app_user_id') || '';
+    fetch(`${SOCKET_URL}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentStoredId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          localStorage.setItem('vehicle_app_user_id', data.user.id);
+          setUserId(data.user.id);
+          if (socketRef.current) {
+            socketRef.current.emit('register-socket', data.user.id);
           }
-        });
-    }
+        }
+      });
 
     socketRef.current = io(SOCKET_URL);
 
     socketRef.current.on('connect', () => {
-      socketRef.current.emit('register-socket', userId);
+      const activeId = localStorage.getItem('vehicle_app_user_id') || userId || '';
+      if (activeId) {
+        socketRef.current.emit('register-socket', activeId);
+      }
     });
 
     socketRef.current.on('incoming-call', (data) => {
@@ -396,7 +396,7 @@ export default function App() {
     setCallState('calling');
     setCallStatusText('Calling...');
     
-    const effectiveCallerId = userId || localStorage.getItem('vehicle_app_user_id') || localStorage.getItem('vehicle_app_guest_id') || '00000000-0000-4000-a000-000000000001';
+    const effectiveCallerId = userId || localStorage.getItem('vehicle_app_user_id') || '';
     const callDetails = {
       chatId,
       plateNumber,
@@ -1888,7 +1888,7 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     if (!chatInput.trim() || !activeChat) return;
 
     if (socketRef.current) {
-      const effectiveSenderId = userId || localStorage.getItem('vehicle_app_user_id') || localStorage.getItem('vehicle_app_guest_id') || '00000000-0000-4000-a000-000000000001';
+      const effectiveSenderId = userId || localStorage.getItem('vehicle_app_user_id') || '';
       socketRef.current.emit('send-message', {
         chatId: activeChat.id,
         senderId: effectiveSenderId,

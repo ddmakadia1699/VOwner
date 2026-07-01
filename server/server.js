@@ -5,6 +5,7 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import {
   initDb,
   getOrCreateUser,
@@ -220,6 +221,20 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
+const getGuestIdFromRequest = (req) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+  const ua = req.headers['user-agent'] || 'anonymous_ua';
+  const hash = crypto.createHash('md5').update(`vowner_guest_${ip}_${ua}`).digest('hex');
+  return `${hash.substring(0, 8)}-${hash.substring(8, 12)}-4${hash.substring(13, 16)}-a${hash.substring(17, 20)}-${hash.substring(20, 32)}`;
+};
+
+const getGuestIdFromSocket = (socket) => {
+  const ip = socket.handshake?.headers?.['x-forwarded-for'] || socket.handshake?.address || '127.0.0.1';
+  const ua = socket.handshake?.headers?.['user-agent'] || 'anonymous_ua';
+  const hash = crypto.createHash('md5').update(`vowner_guest_${ip}_${ua}`).digest('hex');
+  return `${hash.substring(0, 8)}-${hash.substring(8, 12)}-4${hash.substring(13, 16)}-a${hash.substring(17, 20)}-${hash.substring(20, 32)}`;
+};
+
 const optionalAuthUser = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -236,13 +251,13 @@ const optionalAuthUser = async (req, res, next) => {
     }
   }
 
-  // Fallback for guest callers / anonymous visitors
-  const guestId = req.headers['x-guest-id'] || '00000000-0000-4000-a000-000000000001';
+  // Deterministic fallback for guest callers based on IP and User-Agent
+  const guestId = getGuestIdFromRequest(req);
   try {
     await getOrCreateUser(guestId, 'Anonymous Guest');
     req.userId = guestId;
   } catch (err) {
-    req.userId = '00000000-0000-4000-a000-000000000001';
+    req.userId = guestId;
   }
   next();
 };
@@ -289,7 +304,8 @@ const checkSearchRateLimit = (req, res, next) => {
 app.post('/api/auth', async (req, res) => {
   const { id, phoneNumber } = req.body;
   try {
-    const user = await getOrCreateUser(id, phoneNumber);
+    const effectiveId = id || getGuestIdFromRequest(req);
+    const user = await getOrCreateUser(effectiveId, phoneNumber || 'Anonymous Guest');
     res.json({ success: true, user });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -505,7 +521,7 @@ app.post('/api/chats/get-or-create', optionalAuthUser, async (req, res) => {
       await dispatchOfflineNotifications(ownerProfile, plateNumber);
     }
 
-    res.json({ success: true, chat, messages, messagesSentToday: msgCount, ownerOffline: !ownerOnline });
+    res.json({ success: true, chat, messages, messagesSentToday: msgCount, ownerOffline: !ownerOnline, callerId: req.userId });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -659,8 +675,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send-message', async (data) => {
-    const { chatId, senderId, recipientId, text, plateNumber } = data;
+    let { chatId, senderId, recipientId, text, plateNumber } = data;
     try {
+      if (!senderId || senderId === '00000000-0000-4000-a000-000000000001') {
+        senderId = getGuestIdFromSocket(socket);
+      }
+      await getOrCreateUser(senderId, 'Anonymous Guest');
+
       const blocked = await isBlocked(senderId, recipientId);
       if (blocked) {
         return socket.emit('chat-error', { message: 'Message blocked.' });
@@ -679,12 +700,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('call-user', async (data) => {
-    const { chatId, plateNumber, callerId, offer } = data;
+    let { chatId, plateNumber, callerId, offer } = data;
     const parts = plateNumber.split(':');
     const country = parts.length === 2 ? parts[0] : 'IN';
     const rawPlate = parts.length === 2 ? parts[1] : plateNumber;
 
     try {
+      if (!callerId || callerId === '00000000-0000-4000-a000-000000000001') {
+        callerId = getGuestIdFromSocket(socket);
+      }
+      await getOrCreateUser(callerId, 'Anonymous Guest');
+
       const vehicleOwner = await getVehicleOwner(rawPlate, country);
       if (!vehicleOwner) {
         return socket.emit('call-failed', { reason: 'Owner not registered.' });
