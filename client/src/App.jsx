@@ -1844,6 +1844,30 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     initChat();
   }, [plate]);
 
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const handleNewMessage = (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+      const currentSenderId = userId || localStorage.getItem('vehicle_app_user_id') || '';
+      if (msg.sender_id === currentSenderId) {
+        setMessagesSentToday(prev => prev + 1);
+      }
+    };
+
+    const handleChatError = (err) => {
+      showToast(err.message, 'error');
+    };
+
+    socketRef.current.on('new-message', handleNewMessage);
+    socketRef.current.on('chat-error', handleChatError);
+
+    return () => {
+      socketRef.current.off('new-message', handleNewMessage);
+      socketRef.current.off('chat-error', handleChatError);
+    };
+  }, [socketRef, userId]);
+
   const initChat = async () => {
     const parts = plate.split(':');
     const country = parts.length === 2 ? parts[0] : 'IN';
@@ -1856,6 +1880,9 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
       });
       const data = await res.json();
       if (data.success) {
+        if (!userId) {
+          localStorage.setItem('vehicle_app_user_id', data.callerId);
+        }
         const ownerDetailRes = await authFetch(`${SOCKET_URL}/api/vehicles/owner/${rawPlate}?countryCode=${country}`);
         const ownerDetail = await ownerDetailRes.json();
 
@@ -1914,6 +1941,8 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
     }
   };
 
+  const effectiveUserId = userId || localStorage.getItem('vehicle_app_user_id') || '';
+
   return (
     <div className="chat-container">
       <header className="chat-header">
@@ -1927,7 +1956,7 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
           {activeChat?.recipientId !== 'unregistered' && (
             <button className="btn btn-success" onClick={() => requestVerificationWrapper(() => startAudioCall(activeChat.id, plate, activeChat.recipientId))} style={{ width: 'auto', padding: '8px 12px', borderRadius: 8 }}><Phone size={14} /> Call</button>
           )}
-          {activeChat?.recipientId !== 'unregistered' && activeChat?.recipientId !== userId && (
+          {activeChat?.recipientId !== 'unregistered' && activeChat?.recipientId !== effectiveUserId && (
             <button className="btn btn-danger" onClick={handleBlockUser} style={{ width: 'auto', padding: '8px 12px', borderRadius: 8 }}><Lock size={14} /> Block</button>
           )}
         </div>
@@ -1948,7 +1977,7 @@ function ChatPage({ userId, socketRef, requestVerificationWrapper, startAudioCal
 
       <div className="chat-messages">
         {chatMessages.map(msg => (
-          <div key={msg.id} className={`chat-bubble ${msg.sender_id === userId ? 'sent' : 'received'}`}>
+          <div key={msg.id} className={`chat-bubble ${msg.sender_id === effectiveUserId ? 'sent' : 'received'}`}>
             <div>{msg.text}</div>
             <div className="chat-timestamp">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
